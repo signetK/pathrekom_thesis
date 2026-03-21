@@ -1,0 +1,15 @@
+@import "tailwindcss";
+
+body {
+  margin: 0;
+
+  background: linear-gradient(
+    to bottom,
+    #101A61 5%,
+    #3C69DE 40%, 
+    #FFFFFF 100%
+  );
+
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+}
