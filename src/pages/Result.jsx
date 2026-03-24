@@ -75,19 +75,21 @@ export default function Result() {
       : defaultTableData
 
   return (
-    <div className="min-h-screen px-6 py-8">
-      <div className="mx-auto mt-1 mb-1 w-[90%] max-w-7xl overflow-hidden rounded-[32px] border border-gray-300 bg-[#f5f5f5] shadow-2xl">
-        <div className="flex items-center justify-between bg-[#03045e] px-4 py-2 text-white">
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white">
-            <img src={ccislogo} alt="logo" className="h-9 w-9 object-contain" />
-          </div>
-
-          <h1 className="text-center text-3xl font-bold">
-            Path<span className="text-[#f4a000]">Rekom</span>
-          </h1>
-
-          <div className="w-12" />
-        </div>
+   <div className="min-h-screen px-6 py-8">
+         <div className="mx-auto mt-1 mb-1 w-[90%] max-w-6xl overflow-hidden rounded-[32px] border border-gray-300 bg-[#f5f5f5] shadow-2xl">
+           
+           {/* Header */}
+           <div className="flex items-center justify-between bg-[#03045e] px-4 py-2 text-white">
+             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white">
+               <img src={ccislogo} alt="logo" className="h-9 w-9 object-contain" />
+             </div>
+   
+             <h1 className="text-center text-2xl font-bold">
+               Path<span className="text-[#f4a000]">Rekom</span>
+             </h1>
+   
+             <div className="w-12" />
+           </div>
 
         <div className="min-h-[620px] px-6 py-12">
           <div className="grid gap-10 lg:grid-cols-[1.7fr_0.9fr]">

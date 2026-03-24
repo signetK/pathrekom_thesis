@@ -8,7 +8,7 @@ import graduateIcon from '../assets/graduateIcon.png'
 export default function Home() {
   return (
     <div className="min-h-screen px-6 py-8">
-      <div className="mx-auto mt-1 mb-1 w-[90%] max-w-7xl overflow-hidden rounded-[32px] border border-gray-300 bg-[#f5f5f5] shadow-2xl">
+      <div className="mx-auto mt-1 mb-1 w-[90%] max-w-6xl overflow-hidden rounded-[32px] border border-gray-300 bg-[#f5f5f5] shadow-2xl">
         <div className="flex items-center justify-between bg-[#03045e] px-4 py-2 text-white">
           <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white">
             <img src={ccislogo} alt="logo" className="h-9 w-9 object-contain" />
