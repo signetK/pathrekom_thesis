@@ -5,15 +5,21 @@ import ccislogo from '../assets/ccislogo.png'
 export default function ProgramSelect() {
   const navigate = useNavigate()
   const [selectedProgram, setSelectedProgram] = useState('')
+  const [selectedSex, setSelectedSex] = useState('')
 
   const handleNext = () => {
-    if (!selectedProgram) return
-    navigate('/grade-input', { state: { program: selectedProgram } })
+    if (!selectedProgram || !selectedSex) return
+    navigate('/grade-input', {
+      state: {
+        program: selectedProgram,
+        sex: selectedSex,
+      },
+    })
   }
 
   return (
     <div className="min-h-screen px-6 py-8">
-      <div className="mx-auto mt-1 mb-1 w-[90%] max-w-6xl overflow-hidden rounded-[32px] border border-gray-300 bg-[#f5f5f5] shadow-2xl">
+      <div className="mx-auto w-[90%] max-w-6xl overflow-hidden rounded-[32px] border border-gray-300 bg-[#f5f5f5] shadow-2xl">
         
         {/* Header */}
         <div className="flex items-center justify-between bg-[#03045e] px-4 py-2 text-white">
@@ -30,42 +36,105 @@ export default function ProgramSelect() {
 
         {/* Content */}
         <div className="min-h-[620px] px-10 py-12">
+          
+          {/* Title */}
           <div className="mx-auto w-full max-w-6xl bg-[#03045e] py-4 text-center">
             <h2 className="text-2xl font-bold text-white md:text-3xl">
               Select Your Degree Program
             </h2>
           </div>
 
-          {/* Dropdown */}
-          <div className="mt-24 flex justify-center">
+          {/* Sex Selection */}
+          <div className="mt-10 flex justify-center">
             <div className="w-full max-w-md">
-              <select
-                value={selectedProgram}
-                onChange={(e) => setSelectedProgram(e.target.value)}
-                className="cursor-pointer w-full rounded-xl border border-gray-400 bg-white px-4 py-3 text-xl text-gray-600 shadow-sm outline-none"
-              >
-                <option value="" disabled>
-                  Choose Program
-                </option>
-                <option value="bscs">BS in Computer Science</option>
-                <option value="bsit">BS in Information Technology</option>
-              </select>
+              <h3 className="mb-4 text-center text-lg font-semibold text-[#0b1f7a]">
+                Select Sex
+              </h3>
+
+              <div className="flex justify-center gap-8">
+                
+                <button
+                  type="button"
+                  onClick={() => setSelectedSex('male')}
+                  className={`w-36 rounded-xl border-2 py-3 text-lg font-semibold transition
+                    ${
+                      selectedSex === 'male'
+                        ? 'bg-[#03045e] text-white border-[#03045e]'
+                        : 'bg-white text-gray-700 border-gray-300 hover:bg-[#e6eefc]'
+                    }`}
+                >
+                  Male
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setSelectedSex('female')}
+                  className={`w-36 rounded-xl border-2 py-3 text-lg font-semibold transition
+                    ${
+                      selectedSex === 'female'
+                        ? 'bg-[#03045e] text-white border-[#03045e]'
+                        : 'bg-white text-gray-700 border-gray-300 hover:bg-[#e6eefc]'
+                    }`}
+                >
+                  Female
+                </button>
+
+              </div>
             </div>
           </div>
+
+          {/* Program Selection */}
+          <div className="mt-12 flex justify-center">
+            <div className="w-full max-w-xl">
+              <h3 className="mb-4 text-center text-lg font-semibold text-[#0b1f7a]">
+                Select Degree Program
+              </h3>
+
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                
+                <button
+                  type="button"
+                  onClick={() => setSelectedProgram('bscs')}
+                  className={`rounded-xl border-2 py-4 text-lg font-semibold transition
+                    ${
+                      selectedProgram === 'bscs'
+                        ? 'bg-[#03045e] text-white border-[#03045e]'
+                        : 'bg-white text-gray-700 border-gray-300 hover:bg-[#e6eefc]'
+                    }`}
+                >
+                  BS Computer Science
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setSelectedProgram('bsit')}
+                  className={`rounded-xl border-2 py-4 text-lg font-semibold transition
+                    ${
+                      selectedProgram === 'bsit'
+                        ? 'bg-[#03045e] text-white border-[#03045e]'
+                        : 'bg-white text-gray-700 border-gray-300 hover:bg-[#e6eefc]'
+                    }`}
+                >
+                  BS Information Technology
+                </button>
+
+              </div>
+            </div>
+          </div>
+
         </div>
 
-        {/* Buttons */}
-        <div className="flex justify-center gap-6 ">
+        <div className="flex justify-center gap-6 pb-6">
           <button  
             onClick={() => navigate('/')}
-            className="w-[120px] flex justify-center items-center rounded-lg bg-[#03045e] px-8 py-2 text-lg font-bold text-white shadow hover:opacity-80"
+            className="w-[120px] flex justify-center items-center rounded-lg bg-[#03045e] px-10 py-3 text-lg font-bold text-white shadow hover:opacity-80"
           >
             Back
           </button>
 
           <button
             onClick={handleNext}
-            className="w-[120px] flex justify-center items-center rounded-lg bg-[#f4a000] px-8 py-2 text-lg font-bold text-white shadow hover:opacity-80"
+            className="w-[120px] flex justify-center items-center rounded-lg bg-[#f4a000] px-10 py-3 text-lg font-bold text-white shadow hover:opacity-80"
           >
             Next
           </button>
