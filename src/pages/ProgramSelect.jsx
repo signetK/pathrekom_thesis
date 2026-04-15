@@ -1,17 +1,24 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import Swal from 'sweetalert2'
 import ccislogo from '../assets/ccislogo.png'
 
 export default function ProgramSelect() {
   const navigate = useNavigate()
-  const [selectedProgram, setSelectedProgram] = useState('')
   const [selectedSex, setSelectedSex] = useState('')
 
   const handleNext = () => {
-    if (!selectedProgram || !selectedSex) return
+    if (!selectedSex) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Missing Information',
+        text: 'Please select your gender to continue.',
+        confirmButtonColor: '#f4a000',
+      })
+      return
+    }
     navigate('/grade-input', {
       state: {
-        program: selectedProgram,
         sex: selectedSex,
       },
     })
@@ -40,12 +47,12 @@ export default function ProgramSelect() {
           {/* Title */}
           <div className="mx-auto w-full max-w-6xl bg-[#03045e] py-4 text-center">
             <h2 className="text-2xl font-bold text-white md:text-3xl">
-              Select Your Degree Program
+              Enter Your Gender
             </h2>
           </div>
 
           {/* Sex Selection */}
-          <div className="mt-10 flex justify-center">
+          <div className="mt-20 flex justify-center">
             <div className="w-full max-w-md">
               <h3 className="mb-4 text-center text-lg font-semibold text-[#0b1f7a]">
                 Select Sex
@@ -77,45 +84,6 @@ export default function ProgramSelect() {
                     }`}
                 >
                   Female
-                </button>
-
-              </div>
-            </div>
-          </div>
-
-          {/* Program Selection */}
-          <div className="mt-12 flex justify-center">
-            <div className="w-full max-w-xl">
-              <h3 className="mb-4 text-center text-lg font-semibold text-[#0b1f7a]">
-                Select Degree Program
-              </h3>
-
-              <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                
-                <button
-                  type="button"
-                  onClick={() => setSelectedProgram('bscs')}
-                  className={`rounded-xl border-2 py-4 text-lg font-semibold transition
-                    ${
-                      selectedProgram === 'bscs'
-                        ? 'bg-[#03045e] text-white border-[#03045e]'
-                        : 'bg-white text-gray-700 border-gray-300 hover:bg-[#e6eefc]'
-                    }`}
-                >
-                  BS Computer Science
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setSelectedProgram('bsit')}
-                  className={`rounded-xl border-2 py-4 text-lg font-semibold transition
-                    ${
-                      selectedProgram === 'bsit'
-                        ? 'bg-[#03045e] text-white border-[#03045e]'
-                        : 'bg-white text-gray-700 border-gray-300 hover:bg-[#e6eefc]'
-                    }`}
-                >
-                  BS Information Technology
                 </button>
 
               </div>
