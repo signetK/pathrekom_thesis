@@ -149,7 +149,7 @@ function SemesterTable({ title, courses, grades, onGradeChange, single = false, 
                 value={grades[code] || ''}
                 onChange={(e) => onGradeChange(code, e.target.value)}
                 required
-                className="w-full max-w-[130px] rounded border-2 border-[#f4a000] bg-white px-2 py-1 font-medium text-md text-gray-700 outline-none"
+                className={`w-full max-w-[130px] rounded border-2 px-2 py-1 font-medium text-md outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-200 ${grades[code] ? 'border-[#03045e] bg-[#f8fafc]' : 'border-[#f4a000] bg-white text-gray-700'}`}
               >
                 <option value="">Select Grade</option>
                 {gradeOptions.map((grade) => (
@@ -182,8 +182,41 @@ export default function GradeInput() {
     }))
   }
 
+  const handleBack = () => {
+    Swal.fire({
+      title: 'Are you sure?',
+      text: 'Your current changes will be lost if you go back.',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Yes, go back',
+      cancelButtonText: 'Cancel',
+      confirmButtonColor: '#f4a000',
+      cancelButtonColor: '#6b7280',
+    }).then((result) => {
+      if (result.isConfirmed) {
+        navigate('/program-select')
+      }
+    })
+  }
+
   const handleCalculate = () => {
     if (formRef.current && !formRef.current.reportValidity()) {
+      const missingCount = Array.from(formRef.current.querySelectorAll('select[required]')).filter(
+        (select) => !select.value
+      ).length
+
+      if (missingCount > 0) {
+        Swal.fire({
+          toast: true,
+          position: 'top-end',
+          icon: 'warning',
+          title: `Please fill in ${missingCount} more grade${missingCount === 1 ? '' : 's'}`,
+          showConfirmButton: false,
+          timer: 3000,
+          timerProgressBar: true,
+        })
+      }
+
       return
     }
 
@@ -297,7 +330,8 @@ export default function GradeInput() {
 
           <div className="flex justify-center gap-6 pb-6">
             <button  
-              onClick={() => navigate('/program-select')}
+              onClick={handleBack}
+              type="button"
               className="w-[120px] flex justify-center items-center rounded-lg bg-[#03045e] px-10 py-3 text-lg font-bold text-white shadow hover:opacity-80"
             >
               Back
