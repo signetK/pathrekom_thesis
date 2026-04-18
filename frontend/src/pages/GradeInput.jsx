@@ -1,5 +1,6 @@
-import React, { useMemo, useState } from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
+import React, { useState, useRef } from 'react'
+import { useNavigate } from 'react-router-dom'
+import Swal from 'sweetalert2'
 import ccislogo from '../assets/ccislogo.png'
 
 const gradeOptions = [
@@ -101,109 +102,6 @@ const BSCS_DATA = [
           ['CMPSC 200A', 'Thesis Writing I'],
         ],
       },
-      {
-        title: 'Second Semester',
-        courses: [
-          ['CMPSC 138', 'Compiler Design'],
-          ['CMPSC 181', 'Social Issues & Ethics in Computing'],
-          ['CMPSC 200B', 'Thesis Writing II'],
-        ],
-      },
-    ],
-  },
-]
-
-const BSIT_DATA = [
-  {
-    year: 'First Year',
-    groups: [
-      {
-        title: 'First Semester',
-        courses: [
-          ['IT 100_K12', 'Introduction to Computing'],
-          ['IT 111', 'Computer Programming I'],
-        ],
-      },
-      {
-        title: 'Second Semester',
-        courses: [
-          ['IT 102', 'Applications Development and Emerging Technologies'],
-          ['IT 112', 'Computer Programming 2'],
-          ['IT 113', 'Object-Oriented Programming'],
-        ],
-      },
-    ],
-  },
-  {
-    year: 'Second Year',
-    groups: [
-      {
-        title: 'First Semester',
-        courses: [
-          ['IT 114', 'Fundamental of Database Systems'],
-          ['IT 123', 'Operating Systems'],
-          ['IT 131', 'Data Structure & Algorithms'],
-          ['IT 152', 'Introduction to Game Development'],
-        ],
-      },
-      {
-        title: 'Second Semester',
-        courses: [
-          ['IT 121', 'Web Development'],
-          ['IT 132_N', 'Discrete Structures'],
-          ['IT 133_N', 'Quantitative Methods for IT'],
-          ['IT 140', 'System Analysis & Design'],
-        ],
-      },
-    ],
-  },
-  {
-    year: 'Third Year',
-    groups: [
-      {
-        title: 'First Semester',
-        courses: [
-          ['IT 126', 'Computer Networks 1'],
-          ['IT 128', 'Platform Technologies'],
-          ['IT 141', 'Software Engineering'],
-          ['IT 161_K12', 'Information Management'],
-          ['IT 162', 'System Administration & Maintenance'],
-          ['IT 181', 'Fundamentals of Business Analytics'],
-        ],
-      },
-      {
-        title: 'Second Semester',
-        courses: [
-          ['IT 127', 'Computer Networks 2'],
-          ['IT 142', 'Systems Integration and Architecture'],
-          ['IT 163_N', 'Information Assurance and Security 1'],
-          ['IT 171', 'IT Elective 1'],
-          ['IT 192', 'Social Issues & Ethics in Computing'],
-          ['IT 196', 'IT Seminar'],
-        ],
-      },
-    ],
-  },
-  {
-    year: 'Fourth Year',
-    groups: [
-      {
-        title: 'First Semester',
-        courses: [
-          ['IT 199', 'Practicum'],
-          ['IT 200A', 'Capstone Project 1'],
-        ],
-      },
-      {
-        title: 'Second Semester',
-        courses: [
-          ['IT 129', 'Human Computer Interaction'],
-          ['IT 164', 'Information Assurance & Security 2'],
-          ['IT 156', 'Multimedia Systems'],
-          ['IT 172', 'IT Elective 2'],
-          ['IT 200B', 'Capstone Project 2'],
-        ],
-      },
     ],
   },
 ]
@@ -250,7 +148,8 @@ function SemesterTable({ title, courses, grades, onGradeChange, single = false, 
               <select
                 value={grades[code] || ''}
                 onChange={(e) => onGradeChange(code, e.target.value)}
-                className="w-full max-w-[130px] rounded border-2 border-[#f4a000] bg-white px-2 py-1 font-medium text-md text-gray-700 outline-none"
+                required
+                className={`w-full max-w-[130px] rounded border-2 px-2 py-1 font-medium text-md outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-200 ${grades[code] ? 'border-[#03045e] bg-[#f8fafc]' : 'border-[#f4a000] bg-white text-gray-700'}`}
               >
                 <option value="">Select Grade</option>
                 {gradeOptions.map((grade) => (
@@ -270,14 +169,11 @@ function SemesterTable({ title, courses, grades, onGradeChange, single = false, 
 }
 
 export default function GradeInput() {
-  const location = useLocation()
   const navigate = useNavigate()
-  const selectedProgram = location.state?.program || 'bscs'
+  const formRef = useRef(null)
   const [grades, setGrades] = useState({})
 
-  const curriculum = useMemo(() => {
-    return selectedProgram === 'bsit' ? BSIT_DATA : BSCS_DATA
-  }, [selectedProgram])
+  const curriculum = BSCS_DATA
 
   const handleGradeChange = (courseCode, value) => {
     setGrades((prev) => ({
@@ -286,12 +182,72 @@ export default function GradeInput() {
     }))
   }
 
+  const handleBack = () => {
+    Swal.fire({
+      title: 'Are you sure?',
+      text: 'Your current changes will be lost if you go back.',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Yes, go back',
+      cancelButtonText: 'Cancel',
+      confirmButtonColor: '#f4a000',
+      cancelButtonColor: '#6b7280',
+    }).then((result) => {
+      if (result.isConfirmed) {
+        navigate('/program-select')
+      }
+    })
+  }
+
   const handleCalculate = () => {
-    navigate('/result', { state: { program: selectedProgram, grades } })
+    if (formRef.current && !formRef.current.reportValidity()) {
+      const missingCount = Array.from(formRef.current.querySelectorAll('select[required]')).filter(
+        (select) => !select.value
+      ).length
+
+      if (missingCount > 0) {
+        Swal.fire({
+          toast: true,
+          position: 'top-end',
+          icon: 'warning',
+          title: `Please fill in ${missingCount} more grade${missingCount === 1 ? '' : 's'}`,
+          showConfirmButton: false,
+          timer: 3000,
+          timerProgressBar: true,
+        })
+      }
+
+      return
+    }
+
+    const allCoursesWithDetails = BSCS_DATA.flatMap(section =>
+      section.groups.flatMap(group => group.courses.map(([code, desc]) => ({ code, desc })))
+    )
+    const unansweredCourses = allCoursesWithDetails.filter(course => !grades[course.code])
+
+    if (unansweredCourses.length > 0) {
+      const courseList = unansweredCourses
+        .map(course => `<li><strong>${course.code}</strong> - ${course.desc}</li>`)
+        .join('')
+      
+      Swal.fire({
+        icon: 'error',
+        title: 'Incomplete Grades',
+        html: `<p>Please fill in grades for the following ${unansweredCourses.length} course(s):</p><ul style="text-align: left; display: inline-block;">${courseList}</ul>`,
+        confirmButtonColor: '#f4a000',
+        didOpen: (modal) => {
+          modal.querySelector('ul').style.maxHeight = '300px'
+          modal.querySelector('ul').style.overflowY = 'auto'
+        },
+      })
+      return
+    }
+    navigate('/result', { state: { grades } })
   }
 
   return (
    <div className="min-h-screen px-6 py-8">
+    <form ref={formRef} onSubmit={(e) => { e.preventDefault(); handleCalculate() }}>
          <div className="mx-auto mt-1 mb-1 w-[90%] max-w-6xl overflow-hidden rounded-[32px] border border-gray-300 bg-[#f5f5f5] shadow-2xl">
            
            {/* Header */}
@@ -341,18 +297,14 @@ export default function GradeInput() {
                     />
                   </div>
                 </>
-              ) : (
+              ) : section.groups.length === 2 ? (
                 <div className="grid gap-4 p-4 md:grid-cols-2">
                   <SemesterTable
                     title={section.groups[0].title}
                     courses={section.groups[0].courses}
                     grades={grades}
                     onGradeChange={handleGradeChange}
-                    fillRows={
-                      section.groups[1]
-                        ? Math.max(section.groups[1].courses.length - section.groups[0].courses.length, 0)
-                        : 0
-                    }
+                    fillRows={Math.max(section.groups[1].courses.length - section.groups[0].courses.length, 0)}
                   />
                   <SemesterTable
                     title={section.groups[1].title}
@@ -362,13 +314,24 @@ export default function GradeInput() {
                     fillRows={Math.max(section.groups[0].courses.length - section.groups[1].courses.length, 0)}
                   />
                 </div>
+              ) : (
+                <div className="px-4 pb-4">
+                  <SemesterTable
+                    title={section.groups[0].title}
+                    courses={section.groups[0].courses}
+                    grades={grades}
+                    onGradeChange={handleGradeChange}
+                    single
+                  />
+                </div>
               )}
             </div>
           ))}
 
           <div className="flex justify-center gap-6 pb-6">
             <button  
-              onClick={() => navigate('/program-select')}
+              onClick={handleBack}
+              type="button"
               className="w-[120px] flex justify-center items-center rounded-lg bg-[#03045e] px-10 py-3 text-lg font-bold text-white shadow hover:opacity-80"
             >
               Back
@@ -376,6 +339,7 @@ export default function GradeInput() {
 
             <button
               onClick={handleCalculate}
+              type="submit"
               className="w-[120px] flex justify-center items-center rounded-lg bg-[#f4a000] px-10 py-3 text-lg font-bold text-white shadow hover:opacity-80"
             >
               Calculate
@@ -385,6 +349,7 @@ export default function GradeInput() {
           <div className="px-4 pb-5 text-sm text-gray-400">© 2026 PathRekom</div>
         </div>
       </div>
+    </form>
     </div>
   )
 }
