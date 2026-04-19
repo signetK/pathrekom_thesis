@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import Swal from 'sweetalert2'
 import ccislogo from '../assets/ccislogo.png'
 
@@ -149,7 +149,11 @@ function SemesterTable({ title, courses, grades, onGradeChange, single = false, 
                 value={grades[code] || ''}
                 onChange={(e) => onGradeChange(code, e.target.value)}
                 required
-                className={`w-full max-w-[130px] rounded border-2 px-2 py-1 font-medium text-md outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-200 ${grades[code] ? 'border-[#03045e] bg-[#f8fafc]' : 'border-[#f4a000] bg-white text-gray-700'}`}
+                className={`w-full max-w-[130px] rounded border-2 px-2 py-1 font-medium text-md outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-200 ${
+                  grades[code]
+                    ? 'border-[#03045e] bg-[#f8fafc]'
+                    : 'border-[#f4a000] bg-white text-gray-700'
+                }`}
               >
                 <option value="">Select Grade</option>
                 {gradeOptions.map((grade) => (
@@ -170,9 +174,12 @@ function SemesterTable({ title, courses, grades, onGradeChange, single = false, 
 
 export default function GradeInput() {
   const navigate = useNavigate()
+  const location = useLocation()
   const formRef = useRef(null)
   const [grades, setGrades] = useState({})
+  const [loading, setLoading] = useState(false)
 
+  const selectedSex = location.state?.sex || ''
   const curriculum = BSCS_DATA
 
   const handleGradeChange = (courseCode, value) => {
@@ -199,157 +206,185 @@ export default function GradeInput() {
     })
   }
 
-  const handleCalculate = () => {
-    if (formRef.current && !formRef.current.reportValidity()) {
-      const missingCount = Array.from(formRef.current.querySelectorAll('select[required]')).filter(
-        (select) => !select.value
-      ).length
-
-      if (missingCount > 0) {
-        Swal.fire({
-          toast: true,
-          position: 'top-end',
-          icon: 'warning',
-          title: `Please fill in ${missingCount} more grade${missingCount === 1 ? '' : 's'}`,
-          showConfirmButton: false,
-          timer: 3000,
-          timerProgressBar: true,
-        })
-      }
-
-      return
-    }
-
-    const allCoursesWithDetails = BSCS_DATA.flatMap(section =>
-      section.groups.flatMap(group => group.courses.map(([code, desc]) => ({ code, desc })))
-    )
-    const unansweredCourses = allCoursesWithDetails.filter(course => !grades[course.code])
-
-    if (unansweredCourses.length > 0) {
-      const courseList = unansweredCourses
-        .map(course => `<li><strong>${course.code}</strong> - ${course.desc}</li>`)
-        .join('')
-      
+  const handleCalculate = async () => {
+    if (!selectedSex) {
       Swal.fire({
         icon: 'error',
-        title: 'Incomplete Grades',
-        html: `<p>Please fill in grades for the following ${unansweredCourses.length} course(s):</p><ul style="text-align: left; display: inline-block;">${courseList}</ul>`,
+        title: 'Missing Information',
+        text: 'Sex is missing. Please go back.',
         confirmButtonColor: '#f4a000',
-        didOpen: (modal) => {
-          modal.querySelector('ul').style.maxHeight = '300px'
-          modal.querySelector('ul').style.overflowY = 'auto'
-        },
       })
       return
     }
-    navigate('/result', { state: { grades } })
+
+    if (formRef.current && !formRef.current.reportValidity()) {
+      return
+    }
+
+    try {
+      setLoading(true)
+
+      Swal.fire({
+        title: 'Processing...',
+        text: 'Analyzing your grades. Please wait.',
+        allowOutsideClick: false,
+        allowEscapeKey: false,
+        showConfirmButton: false,
+        didOpen: () => {
+          Swal.showLoading()
+        },
+      })
+      const finalGrades = {
+      ...grades,
+
+      "CMPSC 138": "-",
+      "CMPSC 181": "-",
+      "CMPSC 200B": "-",
+      }
+      const response = await fetch('http://127.0.0.1:8000/predict', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+        sex: selectedSex,
+        grades: finalGrades,
+        }),
+      })
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        throw new Error(result.detail || 'Prediction failed')
+      }
+
+      Swal.close()
+
+      navigate('/result', {
+        state: {
+          prediction: result,
+        },
+      })
+    } catch (error) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Backend Error',
+        text: error.message,
+        confirmButtonColor: '#f4a000',
+      })
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
-   <div className="min-h-screen px-6 py-8">
-    <form ref={formRef} onSubmit={(e) => { e.preventDefault(); handleCalculate() }}>
-         <div className="mx-auto mt-1 mb-1 w-[90%] max-w-6xl overflow-hidden rounded-[32px] border border-gray-300 bg-[#f5f5f5] shadow-2xl">
-           
-           {/* Header */}
-           <div className="flex items-center justify-between bg-[#03045e] px-4 py-2 text-white">
-             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white">
-               <img src={ccislogo} alt="logo" className="h-9 w-9 object-contain" />
-             </div>
-   
-             <h1 className="text-center text-2xl font-bold">
-               Path<span className="text-[#f4a000]">Rekom</span>
-             </h1>
-   
-             <div className="w-12" />
-           </div>
+    <div className="min-h-screen px-6 py-8">
+      <form
+        ref={formRef}
+        onSubmit={(e) => {
+          e.preventDefault()
+          handleCalculate()
+        }}
+      >
+        <div className="mx-auto mt-1 mb-1 w-[90%] max-w-6xl overflow-hidden rounded-[32px] border border-gray-300 bg-[#f5f5f5] shadow-2xl">
+          <div className="flex items-center justify-between bg-[#03045e] px-4 py-2 text-white">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white">
+              <img src={ccislogo} alt="logo" className="h-9 w-9 object-contain" />
+            </div>
 
-        <div className="px-4 py-6">
-          {curriculum.map((section) => (
-            <div key={section.year} className="mb-8 border border-gray-300 bg-[#f2f2f2] shadow">
-              <div className="bg-[#03045e] py-3 text-center text-2xl font-bold text-white">
-                {section.year}
-              </div>
+            <h1 className="text-center text-2xl font-bold">
+              Path<span className="text-[#f4a000]">Rekom</span>
+            </h1>
 
-              {section.groups.length === 3 ? (
-                <>
+            <div className="w-12" />
+          </div>
+
+          <div className="px-4 py-6">
+            {curriculum.map((section) => (
+              <div key={section.year} className="mb-8 border border-gray-300 bg-[#f2f2f2] shadow">
+                <div className="bg-[#03045e] py-3 text-center text-2xl font-bold text-white">
+                  {section.year}
+                </div>
+
+                {section.groups.length === 3 ? (
+                  <>
+                    <div className="grid gap-4 p-4 md:grid-cols-2">
+                      <SemesterTable
+                        title={section.groups[0].title}
+                        courses={section.groups[0].courses}
+                        grades={grades}
+                        onGradeChange={handleGradeChange}
+                      />
+                      <SemesterTable
+                        title={section.groups[1].title}
+                        courses={section.groups[1].courses}
+                        grades={grades}
+                        onGradeChange={handleGradeChange}
+                      />
+                    </div>
+
+                    <div className="px-4 pb-4">
+                      <SemesterTable
+                        title={section.groups[2].title}
+                        courses={section.groups[2].courses}
+                        grades={grades}
+                        onGradeChange={handleGradeChange}
+                        single
+                      />
+                    </div>
+                  </>
+                ) : section.groups.length === 2 ? (
                   <div className="grid gap-4 p-4 md:grid-cols-2">
                     <SemesterTable
                       title={section.groups[0].title}
                       courses={section.groups[0].courses}
                       grades={grades}
                       onGradeChange={handleGradeChange}
+                      fillRows={Math.max(section.groups[1].courses.length - section.groups[0].courses.length, 0)}
                     />
                     <SemesterTable
                       title={section.groups[1].title}
                       courses={section.groups[1].courses}
                       grades={grades}
                       onGradeChange={handleGradeChange}
+                      fillRows={Math.max(section.groups[0].courses.length - section.groups[1].courses.length, 0)}
                     />
                   </div>
-
+                ) : (
                   <div className="px-4 pb-4">
                     <SemesterTable
-                      title={section.groups[2].title}
-                      courses={section.groups[2].courses}
+                      title={section.groups[0].title}
+                      courses={section.groups[0].courses}
                       grades={grades}
                       onGradeChange={handleGradeChange}
                       single
                     />
                   </div>
-                </>
-              ) : section.groups.length === 2 ? (
-                <div className="grid gap-4 p-4 md:grid-cols-2">
-                  <SemesterTable
-                    title={section.groups[0].title}
-                    courses={section.groups[0].courses}
-                    grades={grades}
-                    onGradeChange={handleGradeChange}
-                    fillRows={Math.max(section.groups[1].courses.length - section.groups[0].courses.length, 0)}
-                  />
-                  <SemesterTable
-                    title={section.groups[1].title}
-                    courses={section.groups[1].courses}
-                    grades={grades}
-                    onGradeChange={handleGradeChange}
-                    fillRows={Math.max(section.groups[0].courses.length - section.groups[1].courses.length, 0)}
-                  />
-                </div>
-              ) : (
-                <div className="px-4 pb-4">
-                  <SemesterTable
-                    title={section.groups[0].title}
-                    courses={section.groups[0].courses}
-                    grades={grades}
-                    onGradeChange={handleGradeChange}
-                    single
-                  />
-                </div>
-              )}
+                )}
+              </div>
+            ))}
+
+            <div className="flex justify-center gap-6 pb-6">
+              <button
+                onClick={handleBack}
+                type="button"
+                disabled={loading}
+                className="w-[120px] flex justify-center items-center rounded-lg bg-[#03045e] px-10 py-3 text-lg font-bold text-white shadow hover:opacity-80 disabled:opacity-60"
+              >
+                Back
+              </button>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-[120px] flex justify-center items-center rounded-lg bg-[#f4a000] px-10 py-3 text-lg font-bold text-white shadow hover:opacity-80 disabled:opacity-60"
+              >
+                Calculate
+              </button>
             </div>
-          ))}
 
-          <div className="flex justify-center gap-6 pb-6">
-            <button  
-              onClick={handleBack}
-              type="button"
-              className="w-[120px] flex justify-center items-center rounded-lg bg-[#03045e] px-10 py-3 text-lg font-bold text-white shadow hover:opacity-80"
-            >
-              Back
-            </button>
-
-            <button
-              onClick={handleCalculate}
-              type="submit"
-              className="w-[120px] flex justify-center items-center rounded-lg bg-[#f4a000] px-10 py-3 text-lg font-bold text-white shadow hover:opacity-80"
-            >
-              Calculate
-            </button>
+            <div className="px-4 pb-5 text-sm text-gray-400">© 2026 PathRekom</div>
           </div>
-
-          <div className="px-4 pb-5 text-sm text-gray-400">© 2026 PathRekom</div>
         </div>
-      </div>
-    </form>
+      </form>
     </div>
   )
 }
