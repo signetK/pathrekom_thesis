@@ -419,7 +419,7 @@ class PathRekomModel:
         self.job_emb = job_emb
         self.student_emb = student_emb
 
-    def _predict_from_features(self, student_features, student_emb, top_n=10, w_knn=0.4, w_sbert=0.6):
+    def _predict_from_features(self, student_features, student_emb, top_n=5, w_knn=0.4, w_sbert=0.6):
         distances, indices = self.knn.kneighbors(student_features.reshape(1, -1))
         neighbor_rows = self.alumni.iloc[indices[0]].copy()
         neighbor_rows["similarity"] = 1 - distances[0]
@@ -495,7 +495,7 @@ class PathRekomModel:
             "jobs": jobs
         }
 
-    def predict_from_student_id(self, student_id: str, top_n: int = 10):
+    def predict_from_student_id(self, student_id: str, top_n: int = 5):
         if "student_id" not in self.students.columns:
             raise ValueError("students_data.csv does not contain a student_id column.")
 
@@ -514,7 +514,7 @@ class PathRekomModel:
 
         return self._predict_from_features(student_features, student_emb, top_n=top_n)
 
-    def predict(self, sex: str, grades: dict, top_n: int = 10):
+    def predict(self, sex: str, grades: dict, top_n: int = 5):
         user_row = self._normalize_frontend_grades(sex=sex, grades=grades)
 
         profile = self._build_profile(user_row)

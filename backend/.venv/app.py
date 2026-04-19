@@ -46,7 +46,7 @@ def predict(data: PredictRequest):
         raise HTTPException(status_code=400, detail="Grades are required.")
 
     try:
-        result = model.predict(sex=sex, grades=data.grades)
+        result = model.predict(sex=sex, grades=data.grades, top_n=5)
 
         print("\n========== MODEL OUTPUT ==========")
         for item in result["categories"]:

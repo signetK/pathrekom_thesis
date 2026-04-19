@@ -69,7 +69,7 @@ export default function Result() {
   }
 
   return (
-    <div className="min-h-screen px-6 py-12 bg-gradient-to-r from-blue-900 to-blue-500 flex items-center justify-center">
+    <div className="min-h-screen px-6 py-12 flex items-center justify-center">
       <div className="mx-auto w-[95%] max-w-6xl overflow-hidden rounded-[32px] bg-[#fdfdfd] shadow-2xl">
 
         {/* Header */}
@@ -92,7 +92,7 @@ export default function Result() {
             {/* LEFT SECTION: TABLE */}
             <div className="flex flex-col h-full min-h-0">
               <h2 className="mb-6 text-center text-xl font-extrabold text-[#03045e]">
-                Top 10 Recommended Job Categories
+                Top 5 Recommended Job Categories
               </h2>
 
               <div className="overflow-hidden rounded-lg border border-gray-200 shadow-sm flex-1 min-h-0">
@@ -136,7 +136,7 @@ export default function Result() {
             {/* RIGHT SECTION: PILL LIST */}
             <div className="flex flex-col h-full min-h-0">
               <h2 className="mb-6 text-center text-xl font-extrabold text-[#03045e]">
-                Top 10 Category Matches
+                Top 5 Category Matches
               </h2>
 
               <div className="overflow-hidden rounded-xl border border-gray-200 shadow-sm flex-1 min-h-0">
