@@ -226,6 +226,7 @@ class PathRekomModel:
         self.curriculum = None
         self.jobs_df = None
         self.subject_skill_map = None
+        self.subject_skill_breakdown = None
         self.all_skills = None
         self.alumni_skill_df = None
         self.student_skill_df = None
@@ -323,7 +324,7 @@ class PathRekomModel:
 
         students = students.rename(columns={"Sex at Birth": "sex"}).copy()
 
-        students = normalize_grade_table(students.rename(columns={"sex": "sex"}))
+        students = normalize_grade_table(students)
         alumni = normalize_grade_table(alumni)
 
         alumni["job_title"] = alumni["job_title"].astype(str).str.strip()
@@ -331,13 +332,26 @@ class PathRekomModel:
         alumni["job_group"] = alumni["job_title"].apply(normalize_job_group)
 
         subject_skill_map = {}
+        subject_skill_breakdown = {}
+
         for _, row in curriculum.iterrows():
             subject = str(row["Course Code"]).strip()
-            skills = clean_skills(row["Technical Skills"])
-            if subject and skills:
-                subject_skill_map[subject] = skills
+
+            technical_skills = clean_skills(row.get("Technical Skills", ""))
+            power_skills = clean_skills(row.get("Power Skills", ""))
+
+            combined_skills = list(dict.fromkeys(technical_skills + power_skills))
+
+            if subject and combined_skills:
+                subject_skill_map[subject] = combined_skills
+                subject_skill_breakdown[subject] = {
+                    "technical_skills": technical_skills,
+                    "power_skills": power_skills,
+                    "combined_skills": combined_skills,
+                }
 
         self.subject_skill_map = subject_skill_map
+        self.subject_skill_breakdown = subject_skill_breakdown
 
         alumni_profiles = [self._build_profile(r) for _, r in alumni.iterrows()]
         student_profiles = [self._build_profile(r) for _, r in students.iterrows()]
@@ -456,11 +470,7 @@ class PathRekomModel:
         )
 
         max_final = result["final_score"].max()
-        result["match_pct"] = np.where(
-            max_final > 0,
-            (result["final_score"] / max_final) * 100,
-            0.0
-        ).round(2)
+        result["match_pct"] = (result["final_score"]).round(2)
 
         categories = []
         jobs = []
@@ -469,7 +479,7 @@ class PathRekomModel:
             categories.append({
                 "rank": idx + 1,
                 "category": row["job_group"],
-                "match": f"{row['match_pct']:.2f}%"
+                "match": f"{row['match_pct']:.2f}"
             })
 
         expanded_jobs = []

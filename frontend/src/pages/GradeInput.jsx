@@ -13,7 +13,6 @@ const gradeOptions = [
   '2.50',
   '2.75',
   '3.00',
-  '4.00 / INC',
 ]
 
 const BSCS_DATA = [

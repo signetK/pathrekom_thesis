@@ -12,7 +12,7 @@ export default function ProgramSelect() {
       Swal.fire({
         icon: 'error',
         title: 'Missing Information',
-        text: 'Please select your gender to continue.',
+        text: 'Please select your sex to continue.',
         confirmButtonColor: '#f4a000',
       })
       return
@@ -43,7 +43,7 @@ export default function ProgramSelect() {
         <div className="min-h-[620px] px-10 py-12">
           <div className="mx-auto w-full max-w-6xl bg-[#03045e] py-4 text-center">
             <h2 className="text-2xl font-bold text-white md:text-3xl">
-              Enter Your Gender
+              Enter Your Sex
             </h2>
           </div>
 

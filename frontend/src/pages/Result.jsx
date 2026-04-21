@@ -101,7 +101,7 @@ export default function Result() {
                 <div className="grid grid-cols-[70px_1fr_130px] bg-[#03045e] px-5 py-4 text-white font-bold uppercase text-xs tracking-wider">
                   <div>Rank</div>
                   <div>Job Category</div>
-                  <div className="text-right">Relative Match</div>
+                  <div className="text-right">Final Score</div>
                 </div>
 
                 {/* Data Rows */}
