@@ -22,5 +22,5 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
-backend/venv/csv/*
-!backend/venv/csv/.gitkeep
+backend/.venv/csv/*
+!backend/.venv/csv/.gitkeep
