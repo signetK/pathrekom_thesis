@@ -10,7 +10,6 @@ function App() {
   return (
     <Routes>
       <Route path="/" element={<Home />} />
-      <Route path="/program-select" element={<ProgramSelect />} />
       <Route path="/grade-input" element={<GradeInput />} />
       <Route path="/result" element={<Result />} />
       <Route path="/about" element={<About />} />

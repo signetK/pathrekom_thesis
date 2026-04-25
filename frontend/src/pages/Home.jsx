@@ -35,7 +35,7 @@ export default function Home() {
 
             <div className="mt-5 flex flex-wrap gap-4">
               <Link
-                to="/program-select"
+                to="/grade-input"
                 className="rounded-xl bg-[#f4a000] px-7 py-3 text-xl font-semibold text-white shadow-md transition hover:opacity-90"
               >
                 Start Recommendation

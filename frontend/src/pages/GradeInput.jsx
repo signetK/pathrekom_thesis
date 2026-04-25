@@ -178,7 +178,7 @@ export default function GradeInput() {
   const [grades, setGrades] = useState({})
   const [loading, setLoading] = useState(false)
 
-  const selectedSex = location.state?.sex || ''
+
   const curriculum = BSCS_DATA
 
   const handleGradeChange = (courseCode, value) => {
@@ -206,16 +206,6 @@ export default function GradeInput() {
   }
 
   const handleCalculate = async () => {
-    if (!selectedSex) {
-      Swal.fire({
-        icon: 'error',
-        title: 'Missing Information',
-        text: 'Sex is missing. Please go back.',
-        confirmButtonColor: '#f4a000',
-      })
-      return
-    }
-
     if (formRef.current && !formRef.current.reportValidity()) {
       return
     }
@@ -244,7 +234,6 @@ export default function GradeInput() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-        sex: selectedSex,
         grades: finalGrades,
         }),
       })

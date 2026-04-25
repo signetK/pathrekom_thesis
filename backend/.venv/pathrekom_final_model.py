@@ -170,7 +170,7 @@ def clean_skills(text):
     return list(dict.fromkeys(cleaned))
 
 
-def normalize_grade_table(df, id_cols=("student_id", "alumni_id", "sex", "job_title", "job_group")):
+def normalize_grade_table(df, id_cols=("student_id", "alumni_id", "job_title", "job_group")):
     df = df.copy()
 
     if "sex" in df.columns:
@@ -182,7 +182,7 @@ def normalize_grade_table(df, id_cols=("student_id", "alumni_id", "sex", "job_ti
             .replace({"m": "male", "f": "female"})
         )
 
-    grade_cols = [c for c in df.columns if c not in id_cols]
+    grade_cols = [c for c in df.columns if c not in set(id_cols) | {"sex"}]
 
     for col in grade_cols:
         df[col] = df[col].replace(
@@ -237,9 +237,89 @@ class PathRekomModel:
         self.model = None
         self.job_emb = None
         self.student_emb = None
+        self.hybrid_threshold = None
+        self.threshold_method = "mean_minus_std"
 
         self._load_and_prepare()
+    def _get_active_hybrid_threshold(self):
+        return 0.0 if self.hybrid_threshold is None else float(self.hybrid_threshold)
 
+    def _estimate_hybrid_threshold(
+        self,
+        w_knn=0.4,
+        w_sbert=0.6,
+        knn_neighbors=20,
+        aggregation="mean_minus_std"
+    ):
+        alumni_eval = self.alumni_skill_df.copy()
+        alumni_eval["profile_text"] = [profile_to_text(p) for p in self.alumni_profiles]
+        alumni_eval["job_group"] = self.alumni["job_group"].values
+
+        feature_cols = [c for c in alumni_eval.columns if c not in {"job_group", "profile_text"}]
+
+        X_train = alumni_eval[feature_cols].to_numpy(dtype=float)
+        jobs_train = alumni_eval["job_group"].astype(str).tolist()
+        sbert_job_groups = self.jobs_df["Job Group"].astype(str).tolist()
+        train_texts = alumni_eval["profile_text"].astype(str).tolist()
+        train_emb = self.model.encode(train_texts, convert_to_numpy=True)
+
+        n_neighbors = min(knn_neighbors, len(X_train))
+        knn_eval = NearestNeighbors(n_neighbors=n_neighbors, metric="cosine")
+        knn_eval.fit(X_train)
+
+        true_match_scores = []
+
+        for idx in range(len(alumni_eval)):
+            vec = alumni_eval.iloc[idx][feature_cols].to_numpy(dtype=float).reshape(1, -1)
+            distances, indices = knn_eval.kneighbors(vec)
+
+            neighbor_rows = alumni_eval.iloc[indices[0]].copy()
+            neighbor_rows = neighbor_rows[neighbor_rows.index != idx]
+
+            knn_scores_df = (
+                neighbor_rows["job_group"].value_counts(normalize=True)
+                .rename_axis("job_group")
+                .reset_index(name="knn_score")
+            )
+
+            knn_score_map = dict(zip(knn_scores_df["job_group"], knn_scores_df["knn_score"]))
+
+            sbert_sim = cosine_similarity(train_emb[idx].reshape(1, -1), self.job_emb)[0]
+
+            hybrid_df = pd.DataFrame({
+                "job_group": sbert_job_groups,
+                "sbert_score": sbert_sim
+            })
+
+            hybrid_df["knn_score"] = hybrid_df["job_group"].map(knn_score_map).fillna(0.0)
+            hybrid_df["final_score"] = (
+                hybrid_df["sbert_score"] * w_sbert +
+                hybrid_df["knn_score"] * w_knn
+            )
+
+            true_job = str(alumni_eval.iloc[idx]["job_group"])
+            true_row = hybrid_df[hybrid_df["job_group"].astype(str) == true_job]
+
+            if not true_row.empty:
+                true_match_scores.append(float(true_row["final_score"].iloc[0]))
+
+        if not true_match_scores:
+            return 0.0
+
+        true_match_scores = np.array(true_match_scores, dtype=float)
+        mean_score = float(np.mean(true_match_scores))
+        std_score = float(np.std(true_match_scores, ddof=0))
+
+        if aggregation == "median":
+            threshold = float(np.median(true_match_scores))
+        elif aggregation == "mean":
+            threshold = mean_score
+        elif aggregation == "mean_minus_std":
+            threshold = mean_score - std_score
+        else:
+            threshold = 0.0
+
+        return max(0.0, threshold)
     def _normalize_course_code(self, subject: str) -> str:
         code_map = {
             "CMPSC 112_N": "CMPSC 112",
@@ -273,11 +353,8 @@ class PathRekomModel:
 
         return {k: float(np.mean(v)) for k, v in profile.items()}
 
-    def _encode_sex_df(self, df):
-        return pd.get_dummies(df["sex"]).reindex(columns=["female", "male"], fill_value=0)
-
-    def _normalize_frontend_grades(self, sex: str, grades: dict):
-        row = {"student_id": "frontend_user", "sex": str(sex).strip().lower()}
+    def _normalize_frontend_grades(self, grades: dict):
+        row = {"student_id": "frontend_user"}
 
         normalized_input = {}
         for key, value in grades.items():
@@ -301,7 +378,7 @@ class PathRekomModel:
                     row[csv_subject] = float(value)
 
         user_df = pd.DataFrame([row])
-        user_df = normalize_grade_table(user_df, id_cols=("student_id", "sex"))
+        user_df = normalize_grade_table(user_df, id_cols=("student_id",))
         return user_df.iloc[0].to_dict()
 
     def _load_and_prepare(self):
@@ -356,6 +433,8 @@ class PathRekomModel:
         alumni_profiles = [self._build_profile(r) for _, r in alumni.iterrows()]
         student_profiles = [self._build_profile(r) for _, r in students.iterrows()]
 
+        self.alumni_profiles = alumni_profiles
+        self.student_profiles = student_profiles
         all_skills = sorted(set().union(*[p.keys() for p in alumni_profiles + student_profiles]))
 
         def dicts_to_df(dicts):
@@ -367,15 +446,9 @@ class PathRekomModel:
         alumni_skill_df = dicts_to_df(alumni_profiles)
         student_skill_df = dicts_to_df(student_profiles)
 
-        alumni_sex = self._encode_sex_df(alumni)
-        student_sex = self._encode_sex_df(students)
-
         scaler = MinMaxScaler()
         X_alumni = scaler.fit_transform(alumni_skill_df)
         X_students = scaler.transform(student_skill_df)
-
-        X_alumni = np.hstack([X_alumni, alumni_sex.values])
-        X_students = np.hstack([X_students, student_sex.values])
 
         knn = NearestNeighbors(n_neighbors=20, metric="cosine")
         knn.fit(X_alumni)
@@ -425,15 +498,24 @@ class PathRekomModel:
         self.all_skills = all_skills
         self.alumni_skill_df = alumni_skill_df
         self.student_skill_df = student_skill_df
-        self.alumni_sex = alumni_sex
-        self.student_sex = student_sex
         self.scaler = scaler
         self.knn = knn
         self.model = model
         self.job_emb = job_emb
         self.student_emb = student_emb
+    
+        self.hybrid_threshold = self._estimate_hybrid_threshold(
+            w_knn=0.4,
+            w_sbert=0.6,
+            knn_neighbors=20,
+            aggregation=self.threshold_method
+        )
 
-    def _predict_from_features(self, student_features, student_emb, top_n=5, w_knn=0.4, w_sbert=0.6):
+        print(f"Hybrid threshold: {self.hybrid_threshold:.2f}")
+        
+    def _predict_from_features(self, student_features, student_emb, top_n=5, w_knn=0.4, w_sbert=0.6, threshold=None):
+        threshold = self._get_active_hybrid_threshold() if threshold is None else float(threshold)
+
         distances, indices = self.knn.kneighbors(student_features.reshape(1, -1))
         neighbor_rows = self.alumni.iloc[indices[0]].copy()
         neighbor_rows["similarity"] = 1 - distances[0]
@@ -464,13 +546,11 @@ class PathRekomModel:
         )
 
         result = (
-            sbert_df.sort_values("final_score", ascending=False)
+            sbert_df[sbert_df["final_score"] >= threshold]
+            .sort_values("final_score", ascending=False)
             .head(top_n)
             .reset_index(drop=True)
         )
-
-        max_final = result["final_score"].max()
-        result["match_pct"] = (result["final_score"]).round(2)
 
         categories = []
         jobs = []
@@ -479,7 +559,7 @@ class PathRekomModel:
             categories.append({
                 "rank": idx + 1,
                 "category": row["job_group"],
-                "match": f"{row['match_pct']:.2f}"
+                "match": f"{row['final_score']*100:.2f}%"
             })
 
         expanded_jobs = []
@@ -488,7 +568,7 @@ class PathRekomModel:
             for title in titles:
                 expanded_jobs.append({
                     "job": f"{row['job_group']} - {title}",
-                    "score": row["match_pct"]
+                    "score": row["final_score"]
                 })
 
         expanded_jobs = sorted(expanded_jobs, key=lambda x: (-x["score"], x["job"]))[:top_n]
@@ -497,12 +577,13 @@ class PathRekomModel:
             jobs.append({
                 "rank": idx + 1,
                 "job": row["job"],
-                "match": f"{row['score']:.2f}%"
+                "match": f"{row['score']:.2f}"
             })
 
         return {
             "categories": categories,
-            "jobs": jobs
+            "jobs": jobs,
+            "threshold": f"{threshold:.2f}"
         }
 
     def predict_from_student_id(self, student_id: str, top_n: int = 5):
@@ -515,17 +596,13 @@ class PathRekomModel:
 
         idx = matched.index[0]
 
-        student_features = np.hstack([
-            self.scaler.transform(self.student_skill_df.iloc[[idx]]),
-            self.student_sex.iloc[[idx]].values
-        ])[0]
-
+        student_features = self.scaler.transform(self.student_skill_df.iloc[[idx]])[0]
         student_emb = self.student_emb[idx]
 
         return self._predict_from_features(student_features, student_emb, top_n=top_n)
 
-    def predict(self, sex: str, grades: dict, top_n: int = 5):
-        user_row = self._normalize_frontend_grades(sex=sex, grades=grades)
+    def predict(self, grades: dict, top_n: int = 5):
+        user_row = self._normalize_frontend_grades(grades=grades)
 
         profile = self._build_profile(user_row)
 
@@ -533,15 +610,10 @@ class PathRekomModel:
             [[profile.get(skill, 0.0) for skill in self.all_skills]],
             columns=self.all_skills
         )
-        user_skill_scaled = self.scaler.transform(user_skill_df)
 
-        user_df = pd.DataFrame([user_row])
-        user_df = normalize_grade_table(user_df, id_cols=("student_id", "sex"))
-        user_sex_df = self._encode_sex_df(user_df)
-
-        student_features = np.hstack([user_skill_scaled, user_sex_df.values])[0]
+        user_skill_scaled = self.scaler.transform(user_skill_df)[0]
 
         user_text = profile_to_text(profile)
         user_emb = self.model.encode([user_text], convert_to_numpy=True)[0]
 
-        return self._predict_from_features(student_features, user_emb, top_n=top_n)
+        return self._predict_from_features(user_skill_scaled, user_emb, top_n=top_n)
