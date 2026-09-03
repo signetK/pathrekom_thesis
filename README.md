@@ -84,7 +84,7 @@ Skills are:
 ## User Interface & Screenshots
 
 ### 1. Homepage
-![PathRekom Homepage](sample_ui/Final_UI/Homepage.jpg)
+![PathRekom Homepage](sample_ui/Final_UI/Homepage.png)
 
 ### 2. Student Profile Intake
 ![Student Profile Page](sample_ui/Final_UI/StudentProfilePage.png)
